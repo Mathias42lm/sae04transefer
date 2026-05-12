@@ -1,66 +1,37 @@
 <?php
 
-/**************************************************************
- * Site symfony : Art Mathématique - courbe de koch           *
- **************************************************************
- * (c) F. BONNARDOT, 28 Février 2022                          *
- * This code is given as is without warranty of any kind.     *
- * In no event shall the authors or copyright holder be liable*
- *    for any claim damages or other liability.               *
- **************************************************************/
-
 namespace App\Controller;
 
-// Inclus par défaut par Symfony
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-
-// Récupération des données d'un formulaire
 use Symfony\Component\HttpFoundation\Request;
-
-// Exécution d'un process (ici fonction python)
-// Doc : https://symfony.com/doc/current/components/process.html
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
-// Pour renvoyer un fichier directement
-use Symfony\Component\HttpFoundation\File\File;
-
-
 class ArtmathController extends AbstractController
 {
-    /**
-     * @Route("/", name="racine")
-     */
+    #[Route('/', name: 'racine')]
     public function racine() : Response
     {
-        // Redirige vers /artmath si on va sur le site sans
-        //  indiquer le nom de la route
         return $this->redirectToRoute('app_artmath');
     }
 
-    /**
-     * @Route("/artmath", name="app_artmath")
-     */
+    #[Route('/artmath', name: 'app_artmath')]
     public function index(): Response
     {
-        return $this->render('artmath/index.html.twig', [
-            'fichier' => '',
-        ]);
+        return $this->render('artmath/index.html.twig');
     }
-    /**
-     * @Route("/figun", name="app_figun")
-     */
+
+    #[Route('/figun', name: 'app_fig_un')]
     public function figun(): Response
     {
         return $this->render('artmath/fig_un.html.twig', [
             'fichier' => '',
         ]);
     }
-    /**
-     * @Route("/figdeux", name="app_figdeux")
-     */
+
+    #[Route('/figdeux', name: 'app_fig_2')]
     public function figdeuxp(): Response
     {
         return $this->render('artmath/fig_deux.html.twig', [
@@ -68,75 +39,63 @@ class ArtmathController extends AbstractController
         ]);
     }
 
-    /**
-     * @Route("/calculer", name="calculer")
-     */
+    #[Route('/calculer', name: 'calculer', methods: ['POST'])]
     public function calculer(Request $request): Response
     {
-        // Récupère les paramètres issus du formulaire (on indique le champ name)
-        $dimension = $request -> request -> get("dimension") ;
-        // Pour les boutons : si appui contenu champ value sinon NULL
-        $calculer  = $request -> request -> get("calculer");
-        $imprimer  = $request -> request -> get("imprimer");
+        // Securité : Cast en entier de la dimension
+        $dimension = (int) $request->request->get("dimension", 0);
+        $calculer  = $request->request->get("calculer");
 
+        $process = new Process(['python3', 'koch.py', $dimension]);
+        $process->run();
 
-        // Oui : Appelle le script Python koch.py qui se trouve dans le répertoire /public
-        $process = new Process(['python3','koch.py',$dimension]);
-        $process -> run();
-        // Récupère la valeur de retour renvoyé par le script python
-        $fichier=$process->getOutput();
+        if (!$process->isSuccessful()) {
+            return new Response("Erreur lors de l'exécution du script Python :<br>" . $process->getErrorOutput());
+        }
 
-        // Retourne un message si l'éxécution c'est mal passée
-        if (!$process->isSuccessful())
-            return new Response ("Erreur lors de l'éxécution du script Python :<br>".$process->getErrorOutput());    
+        // Nettoyage de la sortie standard (enlève les \n potentiels)
+        $fichier = trim($process->getOutput());
 
-        // A t'on appuyé sur calculer ?
-        if ($calculer!=NULL)
-            return $this->render('artmath/index.html.twig', [
-                'fichier' => $fichier,
-            ]);
-        else {
-            // On a appuyé sur imprimer
-            return $this->render('artmath/imprimer.html.twig', [
+        if ($calculer !== null) {
+            // Correction : retour sur la vue fig_un et non index
+            return $this->render('artmath/fig_un.html.twig', [
                 'fichier' => $fichier,
             ]);
         }
+
+        return $this->render('artmath/imprimer.html.twig', [
+            'fichier' => $fichier,
+        ]);
     }
-    /**
-     * @Route("/fig-deux", name="fig-deux")
-     */
+
+    #[Route('/fig-deux', name: 'fig-deux', methods: ['POST'])]
     public function figdeux(Request $request): Response
     {
-        // Récupère les paramètres issus du formulaire (on indique le champ name)
-        $hasard = $request -> request -> get("hasard");
-        $hasardangle = $request -> request -> get("hasardangle");
-        $nbcolonnes = $request -> request -> get("nbcolonnes");
-        $nblignes = $request -> request -> get("nblignes");
-        // Pour les boutons : si appui contenu champ value sinon NULL
-        $calculer  = $request -> request -> get("calculer");
-        $imprimer  = $request -> request -> get("imprimer");
+        // Securité : Cast des variables pour garantir le typage attendu par Python
+        $hasard      = (float) $request->request->get("hasard", 0);
+        $hasardangle = (float) $request->request->get("hasardangle", 0);
+        $nbcolonnes  = (int) $request->request->get("nbcolonnes", 1);
+        $nblignes    = (int) $request->request->get("nblignes", 1);
+        $calculer    = $request->request->get("calculer");
 
+        $process = new Process(['python3', 'nees_carre.py', $hasard, $hasardangle, $nbcolonnes, $nblignes]);
+        $process->run();
 
-        // Oui : Appelle le script Python nees_carre.py qui se trouve dans le répertoire /public
-        $process = new Process(['python3','nees_carre.py',$hasard,$hasardangle,$nbcolonnes,$nblignes]);
-        $process -> run();
-        // Récupère la valeur de retour renvoyé par le script python
-        $fichier=$process->getOutput();
+        if (!$process->isSuccessful()) {
+            return new Response("Erreur lors de l'exécution du script Python :<br>" . $process->getErrorOutput());
+        }
 
-        // Retourne un message si l'éxécution c'est mal passée
-        if (!$process->isSuccessful())
-            return new Response ("Erreur lors de l'éxécution du script Python :<br>".$process->getErrorOutput());    
+        $fichier = 'reponse.png'; // Ou trim($process->getOutput()) si python renvoie le nom dynamiquement
 
-        // A t'on appuyé sur calculer ?
-        if ($calculer!=NULL)
-            return $this->render('artmath/index.html.twig', [
-                'fichier' => 'reponse.png',
-            ]);
-        else {
-            // On a appuyé sur imprimer
-            return $this->render('artmath/imprimer.html.twig', [
-                'fichier' => 'reponse.png',
+        if ($calculer !== null) {
+            // Correction : retour sur la vue fig_deux et non index
+            return $this->render('artmath/fig_deux.html.twig', [
+                'fichier' => $fichier,
             ]);
         }
+
+        return $this->render('artmath/imprimer.html.twig', [
+            'fichier' => $fichier,
+        ]);
     }
 }
