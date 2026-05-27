@@ -38,6 +38,13 @@ class ArtmathController extends AbstractController
             'fichier' => '',
         ]);
     }
+    #[Route('/figtrois', name: 'app_fig_3')]
+    public function figtrois(): Response
+    {
+        return $this->render('artmath/fig_trois.html.twig', [
+            'fichier' => '',
+        ]);
+    }
 
     #[Route('/calculer', name: 'calculer', methods: ['POST'])]
     public function calculer(Request $request): Response
@@ -90,6 +97,36 @@ class ArtmathController extends AbstractController
         if ($calculer !== null) {
             // Correction : retour sur la vue fig_deux et non index
             return $this->render('artmath/fig_deux.html.twig', [
+                'fichier' => $fichier,
+            ]);
+        }
+
+        return $this->render('artmath/imprimer.html.twig', [
+            'fichier' => $fichier,
+        ]);
+    }
+    #[Route('/fig-trois', name: 'fig-trois', methods: ['POST'])]
+    public function figtrois(Request $request): Response
+    {
+        // Securité : Cast des variables pour garantir le typage attendu par Python
+        $hasard      = (float) $request->request->get("hasard", 0);
+        $hasardangle = (float) $request->request->get("hasardangle", 0);
+        $nbcolonnes  = (int) $request->request->get("nbcolonnes", 1);
+        $nblignes    = (int) $request->request->get("nblignes", 1);
+        $calculer    = $request->request->get("calculer");
+
+        $process = new Process(['python3', 'nees_carre.py', $hasard, $hasardangle, $nbcolonnes, $nblignes]);
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            return new Response("Erreur lors de l'exécution du script Python :<br>" . $process->getErrorOutput());
+        }
+
+        $fichier = 'reponse.png'; // Ou trim($process->getOutput()) si python renvoie le nom dynamiquement
+
+        if ($calculer !== null) {
+            // Correction : retour sur la vue fig_trois et non index
+            return $this->render('artmath/fig_trois.html.twig', [
                 'fichier' => $fichier,
             ]);
         }
