@@ -109,20 +109,17 @@ class ArtmathController extends AbstractController
     public function figtrois(Request $request): Response
     {
         // Securité : Cast des variables pour garantir le typage attendu par Python
-        $hasard      = (float) $request->request->get("hasard", 0);
-        $hasardangle = (float) $request->request->get("hasardangle", 0);
-        $nbcolonnes  = (int) $request->request->get("nbcolonnes", 1);
-        $nblignes    = (int) $request->request->get("nblignes", 1);
+        $depth    = (int) $request->request->get("DEPTH", 1);
         $calculer    = $request->request->get("calculer");
 
-        $process = new Process(['python3', 'nees_carre.py', $hasard, $hasardangle, $nbcolonnes, $nblignes]);
+        $process = new Process(['python3', 'p4.py', $depth]);
         $process->run();
 
         if (!$process->isSuccessful()) {
             return new Response("Erreur lors de l'exécution du script Python :<br>" . $process->getErrorOutput());
         }
 
-        $fichier = 'reponse.png'; // Ou trim($process->getOutput()) si python renvoie le nom dynamiquement
+        $fichier = 'creation_personnelle.png'; // Ou trim($process->getOutput()) si python renvoie le nom dynamiquement
 
         if ($calculer !== null) {
             // Correction : retour sur la vue fig_trois et non index
