@@ -39,7 +39,7 @@ class ArtmathController extends AbstractController
         ]);
     }
     #[Route('/figtrois', name: 'app_fig_3')]
-    public function figtrois(): Response
+    public function figtroisp(): Response
     {
         return $this->render('artmath/fig_trois.html.twig', [
             'fichier' => '',
